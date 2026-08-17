@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 /* Icône du sprite SVG */
-const Ic = ({ id, style }) => (
+const Ic = ({ id, style }: { id: string; style?: CSSProperties }) => (
   <svg className="ic" style={style}>
     <use href={`#${id}`} />
   </svg>
@@ -16,7 +16,12 @@ const DEADLINE = new Date("2026-09-01T00:00:00+02:00");
 const FONDATEUR_TOTAL = 100;
 const FONDATEUR_PRIS = 0;
 
-function luhnValide(num) {
+type Temps = { j: number | string; h: string; m: string; s: string; passe: boolean };
+type Verdict = { nom: string; detail: string; demo: boolean };
+type Niveau = { t: string; p: string; etat: "fait" | "encours" | "verrou"; label: string; n?: number };
+type Feat = { ic: string; tag: string; tagL: string; t: string; p: string };
+
+function luhnValide(num: string): boolean {
   let somme = 0;
   for (let i = 0; i < num.length; i++) {
     let d = parseInt(num[num.length - 1 - i], 10);
@@ -31,10 +36,10 @@ function luhnValide(num) {
 
 export default function Landing() {
   /* Compte à rebours */
-  const [temps, setTemps] = useState({ j: "–", h: "–", m: "–", s: "–", passe: false });
+  const [temps, setTemps] = useState<Temps>({ j: "–", h: "–", m: "–", s: "–", passe: false });
   useEffect(() => {
     const maj = () => {
-      const diff = DEADLINE - new Date();
+      const diff = DEADLINE.getTime() - Date.now();
       if (diff <= 0) return setTemps({ j: 0, h: "00", m: "00", s: "00", passe: true });
       setTemps({
         j: Math.floor(diff / 86400000),
@@ -53,11 +58,11 @@ export default function Landing() {
   const [siren, setSiren] = useState("");
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
-  const [verdict, setVerdict] = useState(null); // {nom, detail, demo}
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [email, setEmail] = useState("");
-  const resultatRef = useRef(null);
+  const resultatRef = useRef<HTMLDivElement | null>(null);
 
-  const formaterSiren = (v) =>
+  const formaterSiren = (v: string) =>
     v.replace(/\D/g, "").slice(0, 9).replace(/(\d{3})(?=\d)/g, "$1 ");
 
   async function verifierSiren() {
@@ -102,7 +107,7 @@ export default function Landing() {
     montrerToast("Ceci est un exemple. Entrez votre SIREN pour votre verdict réel.");
   }
 
-  function afficherVerdict(v) {
+  function afficherVerdict(v: Verdict) {
     setVerdict(v);
     confettis();
     setTimeout(() => resultatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
@@ -143,15 +148,15 @@ export default function Landing() {
   const [paywall, setPaywall] = useState(false);
   const [featsOuvert, setFeatsOuvert] = useState(false);
   const [toast, setToast] = useState("");
-  const toastTimer = useRef(null);
-  function montrerToast(msg) {
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function montrerToast(msg: string) {
     setToast(msg);
-    clearTimeout(toastTimer.current);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 3800);
   }
 
   useEffect(() => {
-    const h = (e) => e.key === "Escape" && setPaywall(false);
+    const h = (e: KeyboardEvent) => e.key === "Escape" && setPaywall(false);
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, []);
@@ -179,10 +184,11 @@ export default function Landing() {
       (entries) =>
         entries.forEach((e) => {
           if (e.isIntersecting) {
-            e.target.classList.add("vu");
-            obs.unobserve(e.target);
-            if (e.target.dataset.anim === "gps") setTimeout(() => setGpsRempli(true), 250);
-            if (e.target.dataset.anim === "fondateur") setTimeout(() => setFondateurVu(true), 300);
+            const el = e.target as HTMLElement;
+            el.classList.add("vu");
+            obs.unobserve(el);
+            if (el.dataset.anim === "gps") setTimeout(() => setGpsRempli(true), 250);
+            if (el.dataset.anim === "fondateur") setTimeout(() => setFondateurVu(true), 300);
           }
         }),
       { threshold: 0.12 }
@@ -191,7 +197,7 @@ export default function Landing() {
     return () => obs.disconnect();
   }, []);
 
-  const niveaux = [
+  const niveaux: Niveau[] = [
     { t: "Comprendre vos obligations", p: "Vos dates, votre cas précis, en français clair.", etat: "fait", label: "Terminé" },
     { t: "Vérifier votre situation réelle", p: "Contrôle SIREN sur l'annuaire officiel, preuve à l'appui.", etat: "fait", label: "Terminé" },
     { t: "Auditer vos factures actuelles", p: "Mentions, format, corrections précises, comme ci-dessus.", etat: "encours", label: "En cours", n: 3 },
@@ -202,7 +208,7 @@ export default function Landing() {
     { t: "Rester en règle (2027 et après)", p: "Veille personnalisée, alertes échéance, re-vérifications.", etat: "verrou", label: "À venir", n: 8 },
   ];
 
-  const feats = [
+  const feats: Feat[] = [
     { ic: "i-search", tag: "tag-gratuit", tagL: "Gratuit", t: "Contrôle SIREN officiel", p: "Votre situation réelle vérifiée sur l'annuaire d'État, preuve à l'appui." },
     { ic: "i-clock", tag: "tag-gratuit", tagL: "Gratuit", t: "Compte à rebours personnalisé", p: "Vos échéances (2026, 2027), pas des dates génériques." },
     { ic: "i-doc-check", tag: "tag-pack", tagL: "Pack", t: "Audit de factures illimité", p: "Mentions, format, corrections précises pour chaque document." },
@@ -275,8 +281,8 @@ export default function Landing() {
             <span className="grad">Vous, vous serez déjà en règle.</span>
           </h1>
           <p className="sous">
-            Vérifiez votre situation en <strong>60 secondes</strong> sur l&apos;annuaire officiel, puis laissez le GPS
-            Conformité vous guider. <strong>En règle en 48 h</strong>, sans jargon, sans expert-comptable à 200 €/h.
+            Vérifiez votre situation en <strong>60 secondes</strong>{" "}
+            sur l&apos;annuaire officiel, puis laissez le GPS Conformité vous guider. <strong>En règle en 48 h</strong>, sans jargon, sans expert-comptable à 200 €/h.
           </p>
 
           <div className="outil">
